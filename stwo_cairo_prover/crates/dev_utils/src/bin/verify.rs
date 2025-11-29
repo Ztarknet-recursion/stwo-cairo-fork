@@ -5,6 +5,7 @@ use cairo_air::verifier::verify_cairo;
 use cairo_air::{CairoProof, PreProcessedTraceVariant};
 use clap::Parser;
 use stwo::core::vcs::blake2_merkle::{Blake2sMerkleChannel, Blake2sMerkleHasher};
+use stwo::core::vcs::poseidon31_merkle::{Poseidon31MerkleChannel, Poseidon31MerkleHasher};
 use stwo::core::vcs::poseidon252_merkle::{Poseidon252MerkleChannel, Poseidon252MerkleHasher};
 use stwo_cairo_prover::prover::ChannelHash;
 use tracing::{span, Level};
@@ -36,7 +37,8 @@ fn parse_channel_hash(hash_str: &str) -> Result<ChannelHash> {
     match hash_str.to_lowercase().as_str() {
         "blake2s" => Ok(ChannelHash::Blake2s),
         "poseidon252" => Ok(ChannelHash::Poseidon252),
-        _ => anyhow::bail!("Invalid channel hash: {hash_str}. Must be 'blake2s' or 'poseidon252'"),
+        "poseidon31" => Ok(ChannelHash::Poseidon31),
+        _ => anyhow::bail!("Invalid channel hash: {hash_str}. Must be 'blake2s' or 'poseidon252' or 'poseidon31'"),
     }
 }
 
@@ -65,6 +67,15 @@ fn verify_poseidon252_proof(
     Ok(())
 }
 
+fn verify_poseidon31_proof(
+    proof: String,
+    preprocessed_trace: PreProcessedTraceVariant,
+) -> Result<()> {
+    let proof: CairoProof<Poseidon31MerkleHasher> = sonic_rs::from_str(&proof)?;
+    verify_cairo::<Poseidon31MerkleChannel>(proof, preprocessed_trace)?;
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let args = Args::parse();
     tracing_subscriber::fmt()
@@ -82,6 +93,7 @@ fn main() -> Result<()> {
     let result = match channel {
         ChannelHash::Blake2s => verify_blake2s_proof(proof, preprocessed_trace),
         ChannelHash::Poseidon252 => verify_poseidon252_proof(proof, preprocessed_trace),
+        ChannelHash::Poseidon31 => verify_poseidon31_proof(proof, preprocessed_trace)
     };
     match result {
         Ok(_) => log::info!("✅ Proof verified successfully!"),

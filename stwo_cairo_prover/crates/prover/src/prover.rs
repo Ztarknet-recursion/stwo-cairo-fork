@@ -180,6 +180,10 @@ pub enum ChannelHash {
     /// Note that using `Poseidon252` results in a significant decrease in proving speed compared
     /// to `Blake2s` (because of the large field emulation)
     Poseidon252,
+    /// A variant for recursive proof verification.
+    /// Note that using `Poseidon31` results in a significant decrease in proving speed compared
+    /// to `Blake2s` (because of the large field emulation)
+    Poseidon31,
 }
 
 /// Generates proof given the Cairo VM output and prover config/parameters.
@@ -198,7 +202,7 @@ pub fn create_and_serialize_proof(
         // The default prover parameters for prod use (96 bits of security).
         // The formula is `security_bits = pow_bits + log_blowup_factor * n_queries`.
         ProverParameters {
-            channel_hash: ChannelHash::Blake2s,
+            channel_hash: ChannelHash::Poseidon31,
             channel_salt: None,
             pcs_config: PcsConfig {
                 // Stay within 500ms on M3.
@@ -237,6 +241,15 @@ pub fn create_and_serialize_proof(
             serialize_proof_to_file(&proof, &proof_path, proof_format)?;
             if verify {
                 verify_cairo::<Poseidon252MerkleChannel>(proof, proof_params.preprocessed_trace)?;
+            }
+        }
+        #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+        ChannelHash::Poseidon31 => {
+            use stwo::core::vcs::poseidon31_merkle::Poseidon31MerkleChannel;
+            let proof = prove_cairo::<Poseidon31MerkleChannel>(input, proof_params)?;
+            serialize_proof_to_file(&proof, &proof_path, proof_format)?;
+            if verify {
+                verify_cairo::<Poseidon31MerkleChannel>(proof, proof_params.preprocessed_trace)?;
             }
         }
     };
