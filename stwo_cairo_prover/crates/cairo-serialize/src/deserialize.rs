@@ -9,6 +9,7 @@ use stwo::core::pcs::{PcsConfig, TreeVec};
 use stwo::core::poly::line::LinePoly;
 use stwo::core::proof::StarkProof;
 use stwo::core::vcs::blake2_hash::Blake2sHash;
+use stwo::core::vcs::poseidon31_hash::Poseidon31Hash;
 use stwo::core::vcs::verifier::MerkleDecommitment;
 use stwo::core::vcs::MerkleHasher;
 use stwo::core::ColumnVec;
@@ -246,5 +247,12 @@ impl CairoDeserialize for Blake2sHash {
             *byte_chunk = v.to_le_bytes();
         }
         Blake2sHash(bytes)
+    }
+}
+
+impl CairoDeserialize for Poseidon31Hash {
+    fn deserialize<'a>(data: &mut impl Iterator<Item = &'a FieldElement>) -> Self {
+        let var: [BaseField; 8] = std::array::from_fn(|_| BaseField::deserialize(data));
+        Poseidon31Hash(var)
     }
 }
